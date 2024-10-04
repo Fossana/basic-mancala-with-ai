@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mancala Game</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .board { display: flex; justify-content: center; margin: 20px; }
+        .pit { width: 50px; height: 100px; border: 2px solid #000; margin: 5px; display: flex; align-items: flex-start; justify-content: center; }
+        .store { width: 70px; height: 100px; border: 2px solid #000; margin: 5px; display: flex; align-items: center; justify-content: center; }
+        .pit span { font-size: 24px; }
+        .store span { font-size: 24px; }
+        .message { text-align: center; }
+    </style>
+</head>
+<body>
+
+<h1>Mancala Game</h1>
+<div class="board">
+    <div class="store" id="human-store"><span>0</span></div>
+    <div class="pit" data-index="0"><span>4</span></div>
+    <div class="pit" data-index="1"><span>4</span></div>
+    <div class="pit" data-index="2"><span>4</span></div>
+    <div class="pit" data-index="3"><span>4</span></div>
+    <div class="pit" data-index="4"><span>4</span></div>
+    <div class="pit" data-index="5"><span>4</span></div>
+    <div class="store" id="ai-store"><span>0</span></div>
+    <div class="pit" data-index="6"><span>4</span></div>
+    <div class="pit" data-index="7"><span>4</span></div>
+    <div class="pit" data-index="8"><span>4</span></div>
+    <div class="pit" data-index="9"><span>4</span></div>
+    <div class="pit" data-index="10"><span>4</span></div>
+    <div class="pit" data-index="11"><span>4</span></div>
+</div>
+<div class="message" id="message">Your turn!</div>
+
+<script>
+    const pits = Array.from(document.querySelectorAll('.pit'));
+    const humanStore = document.getElementById('human-store').querySelector('span');
+    const aiStore = document.getElementById('ai-store').querySelector('span');
+    const messageElement = document.getElementById('message');
+    let turn = Math.random() < 0.5 ? 'human' : 'ai';
+    let board = Array(14).fill(4);
+    board[6] = 0; // AI store
+    board[13] = 0; // Human store
+
+    pits.forEach((pit, index) => {
+        pit.addEventListener('click', () => {
+            if (turn === 'human' && index < 6 && board[index] > 0) {
+                humanTurn(index);
+            }
+        });
+    });
+
+    function humanTurn(index) {
+        let beads = board[index];
+        board[index] = 0;
+        let position = index;
+
+        while (beads > 0) {
+            position = (position + 1) % 14;
+            if (position !== 6) { // Skip AI store
+                board[position]++;
+                beads--;
+            }
+        }
+
+        if (position === 6) { // Human lands in store
+            turn = 'human';
+        } else {
+            turn = 'ai';
+        }
+        updateBoard();
+        if (turn === 'ai') aiTurn();
+    }
+
+    function aiTurn() {
+        let bestIndex = -1;
+        let bestValue = -Infinity;
+
+        for (let i = 7; i < 13; i++) {
+            if (board[i] > 0) {
+                let beads = board[i];
+                let position = i;
+                let collected = 0;
+
+                while (beads > 0) {
+                    position = (position + 1) % 14;
+                    if (position !== 6) {
+                        board[position]++;
+                        beads--;
+                    }
+                }
+
+                if (position === 6) {
+                    collected = board[6] + 1; // AI collects
+                } else {
+                    collected = board[6];
+                }
+
+                let humanPotential = 0;
+                for (let j = 0; j < 6; j++) {
+                    if (board[j] > 0) {
+                        humanPotential += board[j]; // Calculate maximum beads human can collect
+                    }
+                }
+
+                let score = collected - humanPotential;
+
+                if (score > bestValue) {
+                    bestValue = score;
+                    bestIndex = i;
+                }
+
+                // Reset board
+                resetBoard();
+            }
+        }
+
+        // Execute best move
+        if (bestIndex !== -1) {
+            let beads = board[bestIndex];
+            board[bestIndex] = 0;
+            let position = bestIndex;
+
+            while (beads > 0) {
+                position = (position + 1) % 14;
+                if (position !== 6) {
+                    board[position]++;
+                    beads--;
+                }
+            }
+
+            turn = 'human';
+            updateBoard();
+        }
+    }
+
+    function resetBoard() {
+        board = Array(14).fill(4);
+        board[6] = 0; // AI store
+        board[13] = 0; // Human store
+    }
+
+    function updateBoard() {
+        pits.forEach((pit, index) => {
+            pit.querySelector('span').textContent = board[index];
+        });
+        humanStore.textContent = board[13];
+        aiStore.textContent = board[6];
+        messageElement.textContent = turn === 'human' ? "Your turn!" : "AI's turn!";
+        checkGameOver();
+    }
+
+    function checkGameOver() {
+        const humanEmpty = board.slice(0, 6).every(beads => beads === 0);
+        const aiEmpty = board.slice(7, 13).every(beads => beads === 0);
+
+        if (humanEmpty || aiEmpty) {
+            let humanScore = board[13];
+            let aiScore = board[6];
+            if (humanScore > aiScore) {
+                messageElement.textContent = "You win!";
+            } else if (aiScore > humanScore) {
+                messageElement.textContent = "AI wins!";
+            } else {
+                messageElement.textContent = "It's a tie!";
+            }
+            pits.forEach(pit => pit.style.pointerEvents = 'none'); // Disable clicking
+        }
+    }
+</script>
+
+</body>
+</html>
